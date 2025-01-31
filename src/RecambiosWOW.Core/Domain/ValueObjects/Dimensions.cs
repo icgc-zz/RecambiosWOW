@@ -1,6 +1,6 @@
 ﻿namespace RecambiosWOW.Core.Domain.ValueObjects;
 
-public record VehicleDimensions
+public record Dimensions
 {
     public int Length { get; }
     public int Width { get; }
