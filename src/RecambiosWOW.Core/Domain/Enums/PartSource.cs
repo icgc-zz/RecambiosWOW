@@ -2,5 +2,8 @@
 
 public enum PartSource
 {
-    
+    OwnInventory,
+    eBay,
+    Milanuncios,
+    Wallapop
 }

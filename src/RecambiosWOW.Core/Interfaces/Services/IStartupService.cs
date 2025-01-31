@@ -1,4 +1,4 @@
-﻿namespace RecambiosWOW.Core.Interfaces;
+﻿namespace RecambiosWOW.Core.Interfaces.Services;
 
 public interface IStartupService
 {

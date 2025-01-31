@@ -3,12 +3,12 @@ using RecambiosWOW.Application.DTOs.Search;
 
 namespace RecambiosWOW.Application.Interfaces;
 
-public interface IPartService
+public interface IVehicleService
 {
-    Task<PartDto> GetByIdAsync(int id);
-    Task<PartDto> GetBySerialNumberAsync(string serialNumber);
-    Task<IEnumerable<PartDto>> SearchAsync(PartSearchCriteriaDto criteria);
-    Task<PartDto> CreateAsync(PartDto partDto);
-    Task<PartDto> UpdateAsync(PartDto partDto);
+    Task<VehicleDto> GetByIdAsync(int id);
+    Task<VehicleDto> GetByVinAsync(string serialNumber);
+    Task<IEnumerable<VehicleDto>> SearchAsync(VehicleSearchCriteriaDto criteria);
+    Task<VehicleDto> CreateAsync(VehicleDto vehicleDto);
+    Task<VehicleDto> UpdateAsync(VehicleDto vehicleDto);
     Task<bool> DeleteAsync(int id);
 }

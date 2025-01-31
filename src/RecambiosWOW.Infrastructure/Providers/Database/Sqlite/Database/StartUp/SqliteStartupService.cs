@@ -4,7 +4,7 @@ using RecambiosWOW.Core.Interfaces.Services;
 using RecambiosWOW.Infrastructure.Common.Settings;
 using SQLite;
 
-namespace RecambiosWOW.Infrastructure.Services.Database.Startup;
+namespace RecambiosWOW.Infrastructure.Providers.Database.Sqlite.Database.StartUp;
 
 public class SqliteStartupService : IStartupService
 {

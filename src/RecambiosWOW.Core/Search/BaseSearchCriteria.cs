@@ -1,16 +1,16 @@
-﻿namespace RecambiosWOW.Core.Criteria;
+﻿namespace RecambiosWOW.Core.Search;
 
 public abstract class BaseSearchCriteria
 {
-    public int Skip { get; private set; }
-    public int Take { get; private set; }
-    public string SortBy { get; private set; }
-    public bool SortDescending { get; private set; }
+    public int Skip { get; set; }
+    public int Take { get; set; }
+    public string? SortBy { get; set; }
+    public bool SortDescending { get; set; }
 
     protected BaseSearchCriteria(
         int skip = 0,
         int take = 20,
-        string sortBy = null,
+        string? sortBy = null,
         bool sortDescending = false)
     {
         Skip = Math.Max(0, skip);

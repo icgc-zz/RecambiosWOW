@@ -1,24 +1,24 @@
 ﻿namespace RecambiosWOW.Core.Domain.ValueObjects;
 
-public record PartIdentifier
+public record VehicleIdentifier
 {
-    public string Manufacturer { get; }
-    public string PartNumber { get; }
-    public string SerialNumber { get; }
+    public string Make { get; }
+    public string Model { get; }
+    public int Year { get; }
 
-    public PartIdentifier(string manufacturer, string partNumber, string serialNumber = null)
+    public VehicleIdentifier(string make, string model, int year)
     {
-        if (string.IsNullOrWhiteSpace(manufacturer))
-            throw new ArgumentException("Manufacturer cannot be empty", nameof(manufacturer));
+        if (string.IsNullOrWhiteSpace(make))
+            throw new ArgumentException("make cannot be empty", nameof(make));
             
-        if (string.IsNullOrWhiteSpace(partNumber))
-            throw new ArgumentException("Part number cannot be empty", nameof(partNumber));
+        if (string.IsNullOrWhiteSpace(model))
+            throw new ArgumentException("model number cannot be empty", nameof(model));
 
-        Manufacturer = manufacturer;
-        PartNumber = partNumber;
-        SerialNumber = serialNumber;
+        Make = make;
+        Model = model;
+        Year = year;
     }
 
     public override string ToString() => 
-        $"{Manufacturer}-{PartNumber}{(SerialNumber != null ? $"-{SerialNumber}" : "")}";
+        $"{Make}-{Model}{(Year != null ? $"-{Year}" : "")}";
 }

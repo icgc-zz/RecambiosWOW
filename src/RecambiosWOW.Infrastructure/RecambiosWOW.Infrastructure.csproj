@@ -12,10 +12,22 @@
 
   <ItemGroup>
     <PackageReference Include="sqlite-net-pcl" Version="1.8.116" />
+    <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.7" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="Scrutor" Version="4.2.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Configuration\" />
+    <Folder Include="Data\Context\" />
+    <Folder Include="Data\Mappings\" />
+    <Folder Include="External\" />
+    <Folder Include="Identity\" />
+    <Folder Include="Providers\Database\Sqlite\Database\Migrations\" />
+    <Folder Include="Providers\MarketPlace\" />
+    <Folder Include="Services\Cache\" />
   </ItemGroup>
 
 </Project>

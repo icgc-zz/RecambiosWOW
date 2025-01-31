@@ -1,13 +1,13 @@
 ﻿using System.Text;
 using Microsoft.Extensions.Logging;
 using RecambiosWOW.Core.Domain.Entities;
-using RecambiosWOW.Core.Interfaces.Database;
+using RecambiosWOW.Core.Interfaces.Providers.Database;
 using RecambiosWOW.Core.Interfaces.Repositories;
 using RecambiosWOW.Core.Search;
 using RecambiosWOW.Core.Search.SearchEnhancement;
 using RecambiosWOW.Infrastructure.Data.Models;
 
-namespace RecambiosWOW.Infrastructure.Data.Repositories;
+namespace RecambiosWOW.Infrastructure.Data.Repositories.Decorators;
 
 public class EnhancedPartRepository : IPartRepository
 {

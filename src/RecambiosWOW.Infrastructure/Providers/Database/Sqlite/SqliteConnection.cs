@@ -1,26 +1,20 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using RecambiosWOW.Core.Interfaces.Database;
+﻿using Microsoft.Extensions.Logging;
+using RecambiosWOW.Core.Interfaces.Providers.Database;
 using SQLite;
 
 namespace RecambiosWOW.Infrastructure.Providers.Database.Sqlite;
 
-public class SqliteConnection : IDbConnection
+public class SqliteConnection(SQLiteAsyncConnection connection, ILogger<SqliteConnection> logger)
+    : IDbConnection
 {
-    private readonly SQLiteAsyncConnection _connection;
-    private readonly ILogger<SqliteConnection> _logger;
+    private readonly SQLiteAsyncConnection _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+    private readonly ILogger<SqliteConnection> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-    public SqliteConnection(SQLiteAsyncConnection connection, ILogger<SqliteConnection> logger)
-    {
-        _connection = connection ?? throw new ArgumentNullException(nameof(connection));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-
-    public async Task<T> QueryFirstOrDefaultAsync<T>(string query, object? parameters = null)
+    public async Task<T?> QueryFirstOrDefaultAsync<T>(string query, object? parameters = null) where T : class, new()
     {
         try
         {
-            return await _connection.QueryFirstOrDefaultAsync<T>(query, parameters);
+            return await _connection.FindWithQueryAsync<T>(query, parameters);
         }
         catch (Exception ex)
         {
@@ -28,8 +22,73 @@ public class SqliteConnection : IDbConnection
             throw;
         }
     }
+    
+    public async Task<List<T>> GetAllAsync<T>() where T : class, new()
+    {
+        try
+        {
+            return await _connection.Table<T>().ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting all entities of type {Type}", typeof(T).Name);
+            throw;
+        }
+    }
 
-    public async Task<IEnumerable<T>> QueryAsync<T>(string query, object parameters = null)
+    public async Task<T?> GetAsync<T>(int id) where T : class, new()
+    {
+        try
+        {
+            return await _connection.GetAsync<T>(id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting entity of type {Type} with id {Id}", typeof(T).Name, id);
+            throw;
+        }
+    }
+
+    public async Task<int> InsertAsync<T>(T entity) where T : class
+    {
+        try
+        {
+            return await _connection.InsertAsync(entity);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error inserting entity of type {Type}", typeof(T).Name);
+            throw;
+        }
+    }
+
+    public async Task<int> UpdateAsync<T>(T entity) where T : class
+    {
+        try
+        {
+            return await _connection.UpdateAsync(entity);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating entity of type {Type}", typeof(T).Name);
+            throw;
+        }
+    }
+
+    public async Task<int> DeleteAsync<T>(int id) where T : class, new()
+    {
+        try
+        {
+            return await _connection.DeleteAsync<T>(id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting entity of type {Type} with id {Id}", typeof(T).Name, id);
+            throw;
+        }
+    }
+
+    public async Task<List<T>> QueryAsync<T>(string query, object parameters = null) where T : class, new()
     {
         try
         {
@@ -42,7 +101,7 @@ public class SqliteConnection : IDbConnection
         }
     }
 
-    public async Task<int> ExecuteAsync(string query, object parameters = null)
+    public async Task<int> ExecuteAsync(string query, object? parameters = null)
     {
         try
         {
@@ -55,133 +114,28 @@ public class SqliteConnection : IDbConnection
         }
     }
 
-    public async Task<T> ExecuteScalarAsync<T>(string query, object parameters = null)
+    public Task<T> ExecuteScalarAsync<T>(string query, object? parameters = null)
     {
         try
         {
-            return await _connection.ExecuteScalarAsync<T>(query, parameters);
+            return _connection.ExecuteScalarAsync<T>(query, parameters);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error executing scalar query: {Query}", query);
+            _logger.LogError(ex, "Error executing command: {Query}", query);
             throw;
-        }
-    }
+        }    }
 
     public async ValueTask DisposeAsync()
     {
-        await _connection.CloseAsync();
-    }
-}
-
-// Infrastructure/Providers/Database/SqliteDatabaseProvider.cs
-public class SqliteDatabaseProvider : IDbProvider
-{
-    private readonly string _databasePath;
-    private SQLiteAsyncConnection _connection;
-    private readonly ILogger<SqliteDatabaseProvider> _logger;
-    private readonly ILoggerFactory _loggerFactory;
-    private readonly SemaphoreSlim _semaphore = new(1, 1);
-
-    public SqliteDatabaseProvider(
-        IConfiguration configuration,
-        ILogger<SqliteDatabaseProvider> logger,
-        ILoggerFactory loggerFactory)
-    {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-        
-        _databasePath = configuration.GetValue<string>("Database:Path") 
-                        ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "recambioswow.db");
-    }
-
-    public async Task<IDbConnection> GetConnectionAsync()
-    {
-        await EnsureConnectionAsync();
-        return new SqliteConnection(_connection, _loggerFactory.CreateLogger<SqliteConnection>());
-    }
-
-    private async Task EnsureConnectionAsync()
-    {
-        if (_connection != null)
-            return;
-
-        await _semaphore.WaitAsync();
         try
         {
-            if (_connection != null)
-                return;
-
-            _connection = new SQLiteAsyncConnection(_databasePath, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create);
-            _logger.LogInformation("Created new database connection to {Path}", _databasePath);
+            await _connection.CloseAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating database connection to {Path}", _databasePath);
+            _logger.LogError(ex, "Error disposing database connection");
             throw;
         }
-        finally
-        {
-            _semaphore.Release();
-        }
-    }
-
-    public async Task InitializeDatabaseAsync()
-    {
-        try
-        {
-            var connection = await GetConnectionAsync();
-
-            // Create tables
-            await connection.ExecuteAsync(@"
-                CREATE TABLE IF NOT EXISTS AlertThresholds (
-                    MetricName TEXT PRIMARY KEY,
-                    Threshold REAL NOT NULL,
-                    UpdatedAt DATETIME NOT NULL
-                );");
-
-            await connection.ExecuteAsync(@"
-                CREATE TABLE IF NOT EXISTS SearchMetrics (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    QueryText TEXT,
-                    ResultCount INTEGER,
-                    ExecutionTimeMs INTEGER,
-                    PageSize INTEGER,
-                    PageNumber INTEGER,
-                    Timestamp DATETIME,
-                    CacheHit BOOLEAN,
-                    IndexSizeBytes INTEGER,
-                    ConcurrentSearches INTEGER
-                );");
-
-            await connection.ExecuteAsync(@"
-                CREATE TABLE IF NOT EXISTS Alerts (
-                    Id TEXT PRIMARY KEY,
-                    MetricName TEXT NOT NULL,
-                    CurrentValue REAL NOT NULL,
-                    Threshold REAL NOT NULL,
-                    Message TEXT NOT NULL,
-                    Severity INTEGER NOT NULL,
-                    Timestamp DATETIME NOT NULL,
-                    Acknowledged BOOLEAN NOT NULL DEFAULT 0
-                );");
-
-            _logger.LogInformation("Database initialized successfully");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error initializing database");
-            throw;
-        }
-    }
-
-    public Task<bool> CheckDatabaseExistsAsync()
-    {
-        return Task.FromResult(File.Exists(_databasePath));
-    }
-
-    public string GetDatabasePath()
-    {
-        return _databasePath;
     }
 }

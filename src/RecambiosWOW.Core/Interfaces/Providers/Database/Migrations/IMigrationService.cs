@@ -1,4 +1,4 @@
-﻿namespace RecambiosWOW.Core.Interfaces.Database.Migrations;
+﻿namespace RecambiosWOW.Core.Interfaces.Providers.Database.Migrations;
 
 public interface IMigrationService
 {

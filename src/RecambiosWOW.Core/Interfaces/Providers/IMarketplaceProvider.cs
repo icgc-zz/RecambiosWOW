@@ -1,6 +1,8 @@
-﻿using RecambiosWOW.Core.Search;
+﻿using RecambiosWOW.Core.Domain.Entities;
+using RecambiosWOW.Core.Domain.Enums;
+using RecambiosWOW.Core.Search;
 
-namespace RecambiosWOW.Core.Interfaces.Marketplace;
+namespace RecambiosWOW.Core.Interfaces.Providers;
 
 public interface IMarketplaceProvider
 {

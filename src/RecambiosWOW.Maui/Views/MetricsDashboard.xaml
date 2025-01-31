@@ -1,9 +1,136 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-
+﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="RecambiosWOW.Maui.Views.MetricsDashboard">
-    <ContentPage.Content>
-        
-    </ContentPage.Content>
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:vm="clr-namespace:RecambiosWOW.Maui.ViewModels"
+             xmlns:model="clr-namespace:RecambiosWOW.Core.Monitoring.Models"
+             x:Class="RecambiosWOW.Maui.Views.MetricsDashboard"
+             x:DataType="vm:MetricsDashboardViewModel"
+             Title="Search Metrics Dashboard">
+
+    <ScrollView>
+        <Grid RowDefinitions="Auto,*"
+              RowSpacing="10"
+              Padding="10">
+
+            <!-- Alert Banner -->
+            <Border IsVisible="{Binding HasMigrationAlert}"
+                    BackgroundColor="#FEF3C7"
+                    Padding="10"
+                    StrokeShape="RoundRectangle 5">
+                <VerticalStackLayout Spacing="5">
+                    <Label Text="Consider migrating to Elasticsearch:"
+                           FontAttributes="Bold"
+                           TextColor="#92400E"/>
+                    <CollectionView ItemsSource="{Binding MigrationReasons}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <Label Text="{Binding}"
+                                       TextColor="#92400E"/>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+            <Grid Grid.Row="1" 
+                  ColumnDefinitions="*,*"
+                  RowDefinitions="*,*"
+                  ColumnSpacing="10"
+                  RowSpacing="10">
+
+                <!-- Response Times Chart -->
+                <Border Grid.Column="0"
+                        Grid.Row="0"
+                        StrokeShape="RoundRectangle 10">
+                    <Grid RowDefinitions="Auto,*" Padding="10">
+                        <Label Text="Response Times"
+                               FontSize="16"
+                               FontAttributes="Bold"/>
+                        <toolkit:CartesianChart Grid.Row="1"
+                                              HeightRequest="200">
+                            <toolkit:CartesianChart.XAxes>
+                                <toolkit:DateTimeAxis/>
+                            </toolkit:CartesianChart.XAxes>
+                            <toolkit:CartesianChart.Series>
+                                <toolkit:LineSeries Values="{Binding ResponseTimes}"
+                                                   Label="Average"/>
+                                <toolkit:LineSeries Values="{Binding P95ResponseTimes}"
+                                                   Label="95th Percentile"/>
+                            </toolkit:CartesianChart.Series>
+                        </toolkit:CartesianChart>
+                    </Grid>
+                </Border>
+
+                <!-- Concurrent Searches -->
+                <Border Grid.Column="1"
+                        Grid.Row="0"
+                        StrokeShape="RoundRectangle 10">
+                    <Grid RowDefinitions="Auto,*" Padding="10">
+                        <Label Text="Concurrent Searches"
+                               FontSize="16"
+                               FontAttributes="Bold"/>
+                        <toolkit:CartesianChart Grid.Row="1"
+                                              HeightRequest="200">
+                            <toolkit:CartesianChart.Series>
+                                <toolkit:LineSeries Values="{Binding ConcurrentSearches}"
+                                                   Label="Users"/>
+                            </toolkit:CartesianChart.Series>
+                        </toolkit:CartesianChart>
+                    </Grid>
+                </Border>
+
+                <!-- Popular Searches -->
+                <Border Grid.Column="0"
+                        Grid.Row="1"
+                        StrokeShape="RoundRectangle 10">
+                    <Grid RowDefinitions="Auto,*" Padding="10">
+                        <Label Text="Popular Searches"
+                               FontSize="16"
+                               FontAttributes="Bold"/>
+                        <toolkit:CartesianChart Grid.Row="1"
+                                              HeightRequest="200">
+                            <toolkit:CartesianChart.Series>
+                                <toolkit:ColumnSeries Values="{Binding PopularSearches}"
+                                                    Label="Searches"/>
+                            </toolkit:CartesianChart.Series>
+                        </toolkit:CartesianChart>
+                    </Grid>
+                </Border>
+
+                <!-- System Stats -->
+                <Border Grid.Column="1"
+                        Grid.Row="1"
+                        StrokeShape="RoundRectangle 10">
+                    <Grid RowDefinitions="Auto,*" Padding="10">
+                        <Label Text="System Statistics"
+                               FontSize="16"
+                               FontAttributes="Bold"/>
+                        <VerticalStackLayout Grid.Row="1" Spacing="10">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Text="Index Size:"/>
+                                <Label Grid.Column="1" 
+                                       Text="{Binding IndexSize, StringFormat='{0:N2} MB'}"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Text="Total Records:"/>
+                                <Label Grid.Column="1" 
+                                       Text="{Binding TotalRecords, StringFormat='{0:N0}'}"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Text="Cache Hit Rate:"/>
+                                <Label Grid.Column="1" 
+                                       Text="{Binding CacheHitRate, StringFormat='{0:P1}'}"/>
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Text="Avg Response Time:"/>
+                                <Label Grid.Column="1" 
+                                       Text="{Binding AvgResponseTime, StringFormat='{0:N1}ms'}"/>
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </ScrollView>
 </ContentPage>

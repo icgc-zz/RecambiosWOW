@@ -1,6 +1,11 @@
 ﻿namespace RecambiosWOW.Infrastructure.Providers.Database.Sqlite;
 
-public class ISqliteDbProvider
+using SQLite;
+
+public interface ISqliteDbProvider
 {
-    
+    Task<SQLiteAsyncConnection> GetSqliteConnectionAsync();
+    Task InitializeDatabaseAsync();
+    Task<bool> CheckDatabaseExistsAsync();
+    string GetDatabasePath();
 }

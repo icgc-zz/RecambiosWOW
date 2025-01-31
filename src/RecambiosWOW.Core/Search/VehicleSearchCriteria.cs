@@ -1,11 +1,11 @@
-﻿namespace RecambiosWOW.Core.Criteria;
+﻿namespace RecambiosWOW.Core.Search;
 
 public class VehicleSearchCriteria : BaseSearchCriteria
 {
-    public string SearchTerm { get; private set; }
-    public string Make { get; private set; }
-    public string Model { get; private set; }
-    public int? Year { get; private set; }
+    public string? SearchTerm { get; set; }
+    public string? Make { get; set; }
+    public string? Model { get; set; }
+    public int? Year { get; set; }
     public string EngineCode { get; private set; }
     public string FuelType { get; private set; }
     public string TransmissionType { get; private set; }
@@ -26,7 +26,7 @@ public class VehicleSearchCriteria : BaseSearchCriteria
         string vin = null,
         int skip = 0,
         int take = 20,
-        string sortBy = null,
+        string? sortBy = null,
         bool sortDescending = false)
         : base(skip, take, sortBy, sortDescending)
     {

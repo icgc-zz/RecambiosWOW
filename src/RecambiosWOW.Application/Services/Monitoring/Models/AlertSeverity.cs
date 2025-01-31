@@ -1,6 +1,8 @@
 ﻿namespace RecambiosWOW.Application.Services.Monitoring.Models;
 
-public class AlertSeverity
+public enum AlertSeverity
 {
-    
+    Info,
+    Warning,
+    Critical
 }

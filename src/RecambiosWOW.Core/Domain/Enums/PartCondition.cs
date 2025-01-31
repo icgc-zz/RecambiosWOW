@@ -1,4 +1,4 @@
-﻿namespace RecambiosWOW.Core.Domain.Entities;
+﻿namespace RecambiosWOW.Core.Domain.Enums;
 
 public enum PartCondition
 {

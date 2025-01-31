@@ -1,6 +1,6 @@
 ﻿using RecambiosWOW.Core.Domain.Enums;
 
-namespace RecambiosWOW.Core.Criteria;
+namespace RecambiosWOW.Core.Search;
 
 public class PartSearchCriteria : BaseSearchCriteria
 {
@@ -24,7 +24,7 @@ public class PartSearchCriteria : BaseSearchCriteria
         int? year = null,
         int skip = 0,
         int take = 20,
-        string sortBy = null,
+        string? sortBy = null,
         bool sortDescending = false)
         : base(skip, take, sortBy, sortDescending)
     {

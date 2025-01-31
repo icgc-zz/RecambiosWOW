@@ -1,6 +1,6 @@
 ﻿using RecambiosWOW.Core.Domain.Models;
 
-namespace RecambiosWOW.Core.Interfaces.Vehicle;
+namespace RecambiosWOW.Core.Interfaces.Providers;
 
 public interface IVehicleDataProvider
 {

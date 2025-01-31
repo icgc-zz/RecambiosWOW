@@ -1,43 +1,45 @@
 ﻿using System.Text;
 using Microsoft.Extensions.Logging;
 using RecambiosWOW.Core.Domain.Entities;
+using RecambiosWOW.Core.Interfaces.Providers.Database;
 using RecambiosWOW.Core.Search.SearchEnhancement;
 
 namespace RecambiosWOW.Infrastructure.Services.Search;
 
-public class PartSearchIndexService
+public class VehicleSearchIndexService
 {
-    private readonly IDatabaseProvider _databaseProvider;
+    private readonly IDbProvider _dbProvider;
     private readonly ISearchEnhancementService _searchEnhancement;
-    private readonly ILogger<PartSearchIndexService> _logger;
+    private readonly ILogger<VehicleSearchIndexService> _logger;
 
-    public PartSearchIndexService(
-        IDatabaseProvider databaseProvider,
+    public VehicleSearchIndexService(
+        IDbProvider dbProvider,
         ISearchEnhancementService searchEnhancement,
-        ILogger<PartSearchIndexService> logger)
+        ILogger<VehicleSearchIndexService> logger)
     {
-        _databaseProvider = databaseProvider;
+        _dbProvider = dbProvider;
         _searchEnhancement = searchEnhancement;
         _logger = logger;
     }
 
-    public async Task IndexPartAsync(Part part)
+    public async Task IndexVehicleAsync(Vehicle vehicle)
     {
-        var db = await _databaseProvider.GetConnectionAsync();
+        var db = await _dbProvider.GetConnectionAsync();
         
         // Combine relevant content for searching
         var searchContent = new StringBuilder();
-        searchContent.AppendLine(part.Name);
-        searchContent.AppendLine(part.Description);
-        searchContent.AppendLine(part.Identifier.Manufacturer);
-        searchContent.AppendLine(part.Identifier.PartNumber);
+        searchContent.AppendLine(vehicle.Id.ToString());
+        searchContent.AppendLine(vehicle.Identifier.Make);
+        searchContent.AppendLine(vehicle.Identifier.Model);
+        searchContent.AppendLine(vehicle.Identifier.Year.ToString());
+        searchContent.AppendLine(vehicle.LicensePlate);
         
         // Extract keywords using AI
         var keywords = await _searchEnhancement.ExtractKeywordsAsync(searchContent.ToString());
         
-        var searchable = new SearchablePartModel
+        var searchable = new SearchableVehicleModel
         {
-            Id = part.Id,
+            Id = vehicle.Id,
             Content = searchContent.ToString(),
             Keywords = string.Join(" ", keywords),
             LastUpdated = DateTime.UtcNow

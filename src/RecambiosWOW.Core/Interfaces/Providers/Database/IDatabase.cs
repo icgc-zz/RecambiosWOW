@@ -1,6 +1,4 @@
-﻿using System.Data;
-
-namespace RecambiosWOW.Core.Interfaces.Database;
+﻿namespace RecambiosWOW.Core.Interfaces.Providers.Database;
 
 public interface IDatabase
 {

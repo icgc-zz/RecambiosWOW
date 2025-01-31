@@ -1,14 +1,15 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using RecambiosWOW.Core.Interfaces;
+using RecambiosWOW.Core.Interfaces.Services;
 
-namespace RecambiosWOW.Application.Services;
+namespace RecambiosWOW.Application.Services.Startup;
+
 
 public class StartupService : IStartupService
 {
     private readonly ILogger<StartupService> _logger;
     private readonly IConfiguration _configuration;
-    // Add other required service dependencies
     
     public StartupService(
         ILogger<StartupService> logger,
@@ -23,25 +24,24 @@ public class StartupService : IStartupService
         try
         {
             _logger.LogInformation("Starting initialization process...");
-            
-            // Your initialization logic here
             await PerformStartupTasksAsync();
-            
             _logger.LogInformation("Initialization completed successfully");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to initialize startup service");
-            throw; // Re-throw to halt startup if critical
+            throw;
         }
     }
 
+    public int Order { get; }
+
     private async Task PerformStartupTasksAsync()
     {
-        // Example startup tasks:
+        // Example: Add your specific initialization tasks here
         // - Database migrations
         // - Cache warming
         // - Configuration validation
-        await Task.CompletedTask; // Replace with actual async work
+        await Task.CompletedTask;
     }
 }

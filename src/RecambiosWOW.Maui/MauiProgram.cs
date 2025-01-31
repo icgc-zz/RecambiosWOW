@@ -1,4 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
+using RecambiosWOW.Maui.Services;
+using RecambiosWOW.Shared.Services.Interfaces;
 
 namespace RecambiosWOW.Maui;
 
@@ -14,6 +16,7 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             });
+        builder.Services.AddSingleton<IMetricsService, MauiMetricsService>();
 
 #if DEBUG
         builder.Logging.AddDebug();

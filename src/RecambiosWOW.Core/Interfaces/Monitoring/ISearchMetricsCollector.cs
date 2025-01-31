@@ -1,6 +1,6 @@
 ﻿using RecambiosWOW.Core.Monitoring;
 
-namespace RecambiosWOW.Infrastructure.Monitoring;
+namespace RecambiosWOW.Core.Interfaces.Monitoring;
 
 public interface ISearchMetricsCollector
 {

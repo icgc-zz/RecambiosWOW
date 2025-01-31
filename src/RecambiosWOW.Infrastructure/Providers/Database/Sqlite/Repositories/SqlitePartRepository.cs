@@ -1,14 +1,14 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Text;
+using Microsoft.Extensions.Logging;
 using RecambiosWOW.Core.Domain.Entities;
 using RecambiosWOW.Core.Exceptions;
+using RecambiosWOW.Core.Interfaces.Providers.Database;
 using RecambiosWOW.Core.Interfaces.Repositories;
-using RecambiosWOW.Core.Interfaces.Database;
 using RecambiosWOW.Core.Search;
-using RecambiosWOW.Infrastructure.Data.Models;
 
-namespace RecambiosWOW.Infrastructure.Data.Repositories;
+namespace RecambiosWOW.Infrastructure.Providers.Database.Sqlite.Repositories;
 
-public class SqlitePartRepository : IPartRepository, IBatchRepository<Part>
+public class SqlitePartRepository : IPartRepository
 {
     private readonly IDbProvider _dbProvider;
     private readonly ILogger<SqlitePartRepository> _logger;
@@ -25,45 +25,45 @@ public class SqlitePartRepository : IPartRepository, IBatchRepository<Part>
     {
         try
         {
-            var db = await _dbProvider.GetConnectionAsync();
-            var partModel = await db.Table<PartModel>()
-                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (partModel == null)
-            {
-                _logger.LogWarning("Part with ID {Id} not found", id);
+            await using var connection = await _dbProvider.GetConnectionAsync();
+            var part = await connection.GetAsync<Part>(id);
+            if (part == null)
                 throw new NotFoundException($"Part with ID {id} not found");
-            }
-
-            return partModel.ToDomain();
+            return part;
         }
         catch (Exception ex) when (ex is not NotFoundException)
         {
-            _logger.LogError(ex, "Error retrieving part with ID {Id}", id);
-            throw new RepositoryException($"Error retrieving part with ID {id}", ex);
+            _logger.LogError(ex, "Error getting part with ID {Id}", id);
+            throw;
         }
+    }
+
+    public Task<Part> GetByIdentifierAsync(string manufacturer, string partNumber)
+    {
+        throw new NotImplementedException();
     }
 
     public async Task<Part> GetBySerialNumberAsync(string serialNumber)
     {
+        if (string.IsNullOrWhiteSpace(serialNumber))
+            throw new ArgumentNullException(nameof(serialNumber));
+
         try
         {
-            var db = await _dbProvider.GetConnectionAsync();
-            var partModel = await db.Table<PartModel>()
-                .FirstOrDefaultAsync(p => p.SerialNumber == serialNumber);
+            await using var connection = await _dbProvider.GetConnectionAsync();
+            var part = await connection.QueryFirstOrDefaultAsync<Part>(
+                "SELECT * FROM Parts WHERE SerialNumber = @SerialNumber",
+                new { SerialNumber = serialNumber });
 
-            if (partModel == null)
-            {
-                _logger.LogWarning("Part with serial number {SerialNumber} not found", serialNumber);
+            if (part == null)
                 throw new NotFoundException($"Part with serial number {serialNumber} not found");
-            }
 
-            return partModel.ToDomain();
+            return part;
         }
         catch (Exception ex) when (ex is not NotFoundException)
         {
-            _logger.LogError(ex, "Error retrieving part with serial number {SerialNumber}", serialNumber);
-            throw new RepositoryException($"Error retrieving part with serial number {serialNumber}", ex);
+            _logger.LogError(ex, "Error getting part with serial number {SerialNumber}", serialNumber);
+            throw;
         }
     }
 
@@ -71,101 +71,78 @@ public class SqlitePartRepository : IPartRepository, IBatchRepository<Part>
     {
         try
         {
-            var db = await _dbProvider.GetConnectionAsync();
-            var query = db.Table<PartModel>();
-
-            // Apply filters
-            if (!string.IsNullOrWhiteSpace(criteria.SearchTerm))
-            {
-                var searchTerm = criteria.SearchTerm.ToLowerInvariant();
-                query = query.Where(p => 
-                    p.Name.ToLower().Contains(searchTerm) ||
-                    p.Description.ToLower().Contains(searchTerm) ||
-                    p.Manufacturer.ToLower().Contains(searchTerm));
-            }
-
-            if (criteria.Condition.HasValue)
-            {
-                query = query.Where(p => p.Condition == criteria.Condition.Value);
-            }
-
-            if (!string.IsNullOrWhiteSpace(criteria.Manufacturer))
-            {
-                query = query.Where(p => p.Manufacturer == criteria.Manufacturer);
-            }
-
-            if (criteria.MinPrice.HasValue)
-            {
-                query = query.Where(p => p.PriceAmount >= criteria.MinPrice.Value);
-            }
-
-            if (criteria.MaxPrice.HasValue)
-            {
-                query = query.Where(p => p.PriceAmount <= criteria.MaxPrice.Value);
-            }
-
-            // Apply sorting
-            if (!string.IsNullOrWhiteSpace(criteria.SortBy))
-            {
-                query = ApplySorting(query, criteria.SortBy, criteria.SortDescending);
-            }
-
-            // Apply pagination
-            var results = await query
-                .Skip(criteria.Skip)
-                .Take(criteria.Take)
-                .ToListAsync();
-
-            return results.Select(r => r.ToDomain());
+            await using var connection = await _dbProvider.GetConnectionAsync();
+            
+            var (query, parameters) = BuildSearchQuery(criteria, includePaging: true);
+            return await connection.QueryAsync<Part>(query, parameters);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error searching parts with criteria {@Criteria}", criteria);
-            throw new RepositoryException("Error searching parts", ex);
+            throw;
         }
     }
 
-    public async Task<int> GetTotalCountAsync(PartSearchCriteria criteria)
+public async Task<int> GetTotalCountAsync(PartSearchCriteria criteria)
+{
+    try
     {
-        try
+        await using var connection = await _dbProvider.GetConnectionAsync();
+        
+        var query = new StringBuilder("SELECT COUNT(*) FROM Parts WHERE 1=1");
+        var parameters = new Dictionary<string, object>();
+
+        if (!string.IsNullOrWhiteSpace(criteria.SearchTerm))
         {
-            var db = await _dbProvider.GetConnectionAsync();
-            var query = db.Table<PartModel>();
-
-            // Apply the same filters as SearchAsync
-            if (!string.IsNullOrWhiteSpace(criteria.SearchTerm))
-            {
-                var searchTerm = criteria.SearchTerm.ToLowerInvariant();
-                query = query.Where(p => 
-                    p.Name.ToLower().Contains(searchTerm) ||
-                    p.Description.ToLower().Contains(searchTerm) ||
-                    p.Manufacturer.ToLower().Contains(searchTerm));
-            }
-
-            // ... other filters ...
-
-            return await query.CountAsync();
+            query.Append(" AND (Name LIKE @SearchTerm OR Description LIKE @SearchTerm OR Manufacturer LIKE @SearchTerm)");
+            parameters["SearchTerm"] = $"%{criteria.SearchTerm}%";
         }
-        catch (Exception ex)
+
+        if (criteria.Condition.HasValue)
         {
-            _logger.LogError(ex, "Error getting total count for criteria {@Criteria}", criteria);
-            throw new RepositoryException("Error getting total count", ex);
+            query.Append(" AND Condition = @Condition");
+            parameters["Condition"] = criteria.Condition.Value;
         }
+
+        if (!string.IsNullOrWhiteSpace(criteria.Manufacturer))
+        {
+            query.Append(" AND Manufacturer = @Manufacturer");
+            parameters["Manufacturer"] = criteria.Manufacturer;
+        }
+
+        if (criteria.MinPrice.HasValue)
+        {
+            query.Append(" AND Price >= @MinPrice");
+            parameters["MinPrice"] = criteria.MinPrice.Value;
+        }
+
+        if (criteria.MaxPrice.HasValue)
+        {
+            query.Append(" AND Price <= @MaxPrice");
+            parameters["MaxPrice"] = criteria.MaxPrice.Value;
+        }
+
+        return await connection.ExecuteScalarAsync<int>(query.ToString(), parameters);
     }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error getting total count for criteria {@Criteria}", criteria);
+        throw;
+    }
+}
 
     public async Task<Part> AddAsync(Part part)
     {
         try
         {
-            var db = await _dbProvider.GetConnectionAsync();
-            var model = part.ToModel();
-            await db.InsertAsync(model);
-            return model.ToDomain();
+            await using var connection = await _dbProvider.GetConnectionAsync();
+            var id = await connection.InsertAsync(part);
+            return await GetByIdAsync(id);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error adding part {@Part}", part);
-            throw new RepositoryException("Error adding part", ex);
+            throw;
         }
     }
 
@@ -173,15 +150,17 @@ public class SqlitePartRepository : IPartRepository, IBatchRepository<Part>
     {
         try
         {
-            var db = await _dbProvider.GetConnectionAsync();
-            var model = part.ToModel();
-            await db.UpdateAsync(model);
-            return model.ToDomain();
+            await using var connection = await _dbProvider.GetConnectionAsync();
+            var result = await connection.UpdateAsync(part);
+            if (result == 0)
+                throw new NotFoundException($"Part with ID {part.Id} not found");
+            
+            return part;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not NotFoundException)
         {
             _logger.LogError(ex, "Error updating part {@Part}", part);
-            throw new RepositoryException("Error updating part", ex);
+            throw;
         }
     }
 
@@ -189,123 +168,72 @@ public class SqlitePartRepository : IPartRepository, IBatchRepository<Part>
     {
         try
         {
-            var db = await _dbProvider.GetConnectionAsync();
-            var result = await db.DeleteAsync<PartModel>(id);
+            await using var connection = await _dbProvider.GetConnectionAsync();
+            var result = await connection.DeleteAsync<Part>(id);
             return result > 0;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting part with ID {Id}", id);
-            throw new RepositoryException($"Error deleting part with ID {id}", ex);
+            throw;
         }
     }
 
-    private static IQueryable<PartModel> ApplySorting(
-        IQueryable<PartModel> query,
-        string sortBy,
-        bool sortDescending)
+    private static (string Query, Dictionary<string, object> Parameters) BuildSearchQuery(
+        PartSearchCriteria criteria, 
+        bool includePaging)
     {
-        return sortBy.ToLowerInvariant() switch
+        var query = new StringBuilder("SELECT * FROM Parts WHERE 1=1");
+        var parameters = new Dictionary<string, object>();
+
+        if (!string.IsNullOrWhiteSpace(criteria.SearchTerm))
         {
-            "name" => sortDescending 
-                ? query.OrderByDescending(p => p.Name)
-                : query.OrderBy(p => p.Name),
-            "price" => sortDescending
-                ? query.OrderByDescending(p => p.PriceAmount)
-                : query.OrderBy(p => p.PriceAmount),
-            "manufacturer" => sortDescending
-                ? query.OrderByDescending(p => p.Manufacturer)
-                : query.OrderBy(p => p.Manufacturer),
-            _ => query.OrderBy(p => p.Id)
-        };
+            query.Append(" AND (Name LIKE @SearchTerm OR Description LIKE @SearchTerm OR Manufacturer LIKE @SearchTerm)");
+            parameters["SearchTerm"] = $"%{criteria.SearchTerm}%";
+        }
+
+        if (criteria.Condition.HasValue)
+        {
+            query.Append(" AND Condition = @Condition");
+            parameters["Condition"] = criteria.Condition.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(criteria.Manufacturer))
+        {
+            query.Append(" AND Manufacturer = @Manufacturer");
+            parameters["Manufacturer"] = criteria.Manufacturer;
+        }
+
+        if (criteria.MinPrice.HasValue)
+        {
+            query.Append(" AND Price >= @MinPrice");
+            parameters["MinPrice"] = criteria.MinPrice.Value;
+        }
+
+        if (criteria.MaxPrice.HasValue)
+        {
+            query.Append(" AND Price <= @MaxPrice");
+            parameters["MaxPrice"] = criteria.MaxPrice.Value;
+        }
+
+        // Add sorting
+        if (!string.IsNullOrWhiteSpace(criteria.SortBy))
+        {
+            query.Append($" ORDER BY {criteria.SortBy} {(criteria.SortDescending ? "DESC" : "ASC")}");
+        }
+        else
+        {
+            query.Append(" ORDER BY Id");
+        }
+
+        if (includePaging)
+        {
+            // Add pagination
+            query.Append(" LIMIT @Take OFFSET @Skip");
+            parameters["Take"] = criteria.Take;
+            parameters["Skip"] = criteria.Skip;
+        }
+
+        return (query.ToString(), parameters);
     }
-
-    public async Task<IEnumerable<Part>> GetByIdsAsync(IEnumerable<int> ids)
-    {
-        try
-        {
-            var db = await _dbProvider.GetConnectionAsync();
-            var idList = ids.ToList();
-
-            var models = await db.Table<PartModel>()
-                .Where(p => idList.Contains(p.Id))
-                .ToListAsync();
-
-            return models.Select(m => m.ToDomain());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving parts with IDs {@Ids}", ids);
-            throw new RepositoryException("Error retrieving parts", ex);
-        }
-    }
-    
-   public async Task<int> AddRangeAsync(IEnumerable<Part> parts)
-    {
-        try
-        {
-            var db = await _dbProvider.GetConnectionAsync();
-            var models = parts.Select(p => p.ToModel());
-
-            return await db.RunInTransactionAsync<int>(async (connection) =>
-            {
-                var count = 0;
-                foreach (var batch in models.Chunk(100))
-                {
-                    count += await connection.InsertAllAsync(batch);
-                }
-                return count;
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error adding parts in batch");
-            throw new RepositoryException("Error adding parts in batch", ex);
-        }
-    }
-
-    public async Task<int> UpdateRangeAsync(IEnumerable<Part> parts)
-    {
-        try
-        {
-            var db = await _dbProvider.GetConnectionAsync();
-            var models = parts.Select(p => p.ToModel());
-
-            return await db.RunInTransactionAsync<int>(async (connection) =>
-            {
-                var count = 0;
-                foreach (var batch in models.Chunk(100))
-                {
-                    count += await connection.UpdateAllAsync(batch);
-                }
-                return count;
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating parts in batch");
-            throw new RepositoryException("Error updating parts in batch", ex);
-        }
-    }
-
-    public async Task<int> DeleteRangeAsync(IEnumerable<int> ids)
-    {
-        try
-        {
-            var db = await _dbProvider.GetConnectionAsync();
-            var idList = ids.ToList();
-
-            return await db.RunInTransactionAsync<int>(async (connection) =>
-            {
-                return await connection.Table<PartModel>()
-                    .Where(p => idList.Contains(p.Id))
-                    .DeleteAsync();
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting parts with IDs {@Ids}", ids);
-            throw new RepositoryException("Error deleting parts in batch", ex);
-        }
-    }    
 }

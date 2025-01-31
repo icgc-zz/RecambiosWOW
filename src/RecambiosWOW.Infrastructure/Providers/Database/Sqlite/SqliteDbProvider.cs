@@ -1,23 +1,27 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using RecambiosWOW.Core.Interfaces.Database;
-using RecambiosWOW.Infrastructure.Data.Models;
 using SQLite;
 
 namespace RecambiosWOW.Infrastructure.Providers.Database.Sqlite;
 
-public class SqliteDatabaseProvider(
-    IConfiguration configuration,
-    ILogger<SqliteDatabaseProvider> logger)
-    : IDatabaseProvider
+public class SqliteDbProvider : ISqliteDbProvider
 {
-    private readonly string _databasePath = configuration.GetValue<string>("Database:Path") 
-                                            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "recambioswow.db");
+    private readonly string _databasePath;
     private SQLiteAsyncConnection _connection;
-    private readonly ILogger<SqliteDatabaseProvider> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly ILogger<SqliteDbProvider> _logger;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 
-    public async Task<SQLiteAsyncConnection> GetConnectionAsync()
+    public SqliteDbProvider(
+        IConfiguration configuration,
+        ILogger<SqliteDbProvider> logger)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        _databasePath = configuration.GetValue<string>("Database:Path") 
+                        ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "recambioswow.db");
+    }
+
+    public async Task<SQLiteAsyncConnection> GetSqliteConnectionAsync()
     {
         await EnsureConnectionAsync();
         return _connection;
@@ -48,61 +52,6 @@ public class SqliteDatabaseProvider(
         }
     }
 
-    public async Task InitializeDatabaseAsync()
-    {
-        try
-        {
-            var connection = await GetConnectionAsync();
-
-            // Create tables
-            await connection.CreateTableAsync<PartModel>();
-            await connection.CreateTableAsync<VehicleModel>();
-
-            // Create AlertThresholds table
-            await connection.ExecuteAsync(@"
-                CREATE TABLE IF NOT EXISTS AlertThresholds (
-                    MetricName TEXT PRIMARY KEY,
-                    Threshold REAL NOT NULL,
-                    UpdatedAt DATETIME NOT NULL
-                );");
-
-            // Create SearchMetrics table
-            await connection.ExecuteAsync(@"
-                CREATE TABLE IF NOT EXISTS SearchMetrics (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    QueryText TEXT,
-                    ResultCount INTEGER,
-                    ExecutionTimeMs INTEGER,
-                    PageSize INTEGER,
-                    PageNumber INTEGER,
-                    Timestamp DATETIME,
-                    CacheHit BOOLEAN,
-                    IndexSizeBytes INTEGER,
-                    ConcurrentSearches INTEGER
-                );");
-
-            // Create Alerts table
-            await connection.ExecuteAsync(@"
-                CREATE TABLE IF NOT EXISTS Alerts (
-                    Id TEXT PRIMARY KEY,
-                    MetricName TEXT NOT NULL,
-                    CurrentValue REAL NOT NULL,
-                    Threshold REAL NOT NULL,
-                    Message TEXT NOT NULL,
-                    Severity INTEGER NOT NULL,
-                    Timestamp DATETIME NOT NULL,
-                    Acknowledged BOOLEAN NOT NULL DEFAULT 0
-                );");
-
-            _logger.LogInformation("Database initialized successfully");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error initializing database");
-            throw;
-        }
-    }
-
     public Task<bool> CheckDatabaseExistsAsync()
     {
         return Task.FromResult(File.Exists(_databasePath));
@@ -111,5 +60,11 @@ public class SqliteDatabaseProvider(
     public string GetDatabasePath()
     {
         return _databasePath;
+    }
+
+    public async Task InitializeDatabaseAsync()
+    {
+        var connection = await GetSqliteConnectionAsync();
+        // Add any initialization logic here
     }
 }

@@ -1,6 +1,10 @@
-﻿namespace RecambiosWOW.Application.Services.Monitoring;
+﻿using RecambiosWOW.Application.Services.Monitoring.Models;
 
-public class IAlertService
+namespace RecambiosWOW.Application.Services.Monitoring;
+
+public interface IAlertService
 {
-    
+    Task CheckAndSendAlertsAsync();
+    Task SetAlertThresholdAsync(string metricName, double threshold);
+    Task<IEnumerable<Alert>> GetActiveAlertsAsync();
 }

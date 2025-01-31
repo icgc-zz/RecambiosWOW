@@ -3,7 +3,7 @@
 namespace RecambiosWOW.Infrastructure.Services.Search;
 
 [Table("PartsSearch")]
-public class SearchablePartModel
+public class SearchableVehicleModel
 {
     [PrimaryKey]
     public int Id { get; set; }

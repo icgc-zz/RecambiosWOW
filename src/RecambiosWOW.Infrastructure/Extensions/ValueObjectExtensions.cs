@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace RecambiosWOW.Infrastructure.Data.Extensions;
+namespace RecambiosWOW.Infrastructure.Extensions;
 
 public static class ValueObjectExtensions
 {
